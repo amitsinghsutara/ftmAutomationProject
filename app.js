@@ -1,25 +1,23 @@
-import downloadContent from "./download-content/downloadContent.js";
-const mainDiv = document.getElementById("main-div");
-
+const readline = require("readline");
 async function main() {
   const language = await selectYourLanguage();
-  downloadContent(mainDiv, language);
 }
 
 function selectYourLanguage() {
-  return new Promise((resolve) => {
-    const createLanguageInputField = document.createElement("input");
-    createLanguageInputField.placeholder = "Enter language you want to create:";
-    mainDiv.appendChild(createLanguageInputField);
+  const language = askQuestion(
+    "Enter the language you want your new ftm to be:"
+  );
+}
+async function askQuestion(question) {
+  return new Promise((resolve, reject) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
 
-    createLanguageInputField.addEventListener("keydown", function (event) {
-      if (event.keyCode === 13) {
-        event.preventDefault(); // Prevent the default Enter key behavior
-        const language = createLanguageInputField.value;
-        createLanguageInputField.value = "";
-        mainDiv.removeChild(createLanguageInputField);
-        resolve(language);
-      }
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
     });
   });
 }
