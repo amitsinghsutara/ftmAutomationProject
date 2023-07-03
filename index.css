@@ -1,0 +1,41 @@
+#main-div {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(0, 255, 255),
+    rgb(105, 212, 105),
+    rgb(232, 47, 30)
+  );
+}
+h1 {
+  text-align: center;
+  text-decoration: underline;
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(0, 255, 255),
+    rgb(105, 212, 105),
+    rgb(232, 47, 30)
+  );
+}
+input {
+  position: absolute;
+  left: 35vw;
+  width: 25vw;
+  padding: 1vw;
+  border: 1vw solid #ccc;
+  border-radius: 5px;
+  font-size: 1.5vw;
+}
+
+input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}

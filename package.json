@@ -1,0 +1,11 @@
+{
+  "name": "ftmautomationproject",
+  "version": "1.0.0",
+  "description": "This is the project which utilizes all the autmation scripts created for new ftmpwa creation.",
+  "main": "app.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "author": "Sutara Team",
+  "license": "ISC"
+}
