@@ -35,14 +35,26 @@ def main_http(request):
             body="There was error while generating json,\n Make sure that the language name is correct"
             inform_user_about_updates(receiver,subject,body)
             return
+        
+        print("Json Data Generated sucessfully")
         prompt_text=find_unique_audio_urls(json_data)
+        if not prompt_text:
+            body="There was error while generating json,\n Make sure that the language name is correct"
+            inform_user_about_updates(receiver,subject,body)
+            return
+        
         wav_prompt_text=find_unique_wav_audio_texts(prompt_text)
         output= check_in_drive(shared_drive_id,root_folder_id,desired_folder_id,prompt_text,wav_prompt_text,lang)
-        body += "JSON generation process is successful.\n"
-        body += "Checking for audios is done. Here is the list of missing audios:\n"
-        body += "\n".join(output) 
-        inform_user_about_updates(receiver,subject,body)
-        name = "World"
+        if not output:
+            body += "JSON generation process is successful.\n"
+            body += "Checking for audios is done. \n The Language is ready to be build"
+            inform_user_about_updates(receiver,subject,body)
+            
+        else:    
+            body += "JSON generation process is successful.\n"
+            body += "Checking for audios is done. Here is the list of missing audios:\n"
+            body += "\n".join(output) 
+            inform_user_about_updates(receiver,subject,body)
 
 
     return f"missing audios in google drive-->{body}"
@@ -52,6 +64,7 @@ def main_http(request):
 
 
 def find_unique_audio_urls(obj, unique_audio_keys=None):
+    print(obj)
     feedback_words = ['amazing.mp3', 'fantastic.mp3', 'great1.mp3', 'amazing.mp3']
     if unique_audio_keys is None:
         unique_audio_keys = set()

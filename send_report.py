@@ -17,12 +17,12 @@ def inform_user_about_updates(receiver,subject,body):
     # Add the body of the email
     msg.attach(MIMEText(body, 'plain'))
     # Generate the report
-    report_content = f"Missing audios in google drive-->\n{body}"
+    # report_content = f"Missing audios in google drive-->\n{body}"
      
     
 
     try:
-        msg.attach(MIMEText(report_content, 'plain'))
+        # msg.attach(MIMEText(report_content, 'plain'))
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.ehlo()
         server.login(gmail_user, gmail_app_password)

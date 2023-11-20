@@ -10,7 +10,7 @@ import subprocess
 from pydub import AudioSegment
 
 # Path to the JSON key file you downloaded when setting up the service account.
-KEY_FILE = '/run/media/amitsingh/New Volume/Sutara/NewProject/FeedTheMonsterJS/Automation Scripts/credentials.json'
+KEY_FILE = './credentials.json'
 missing_audios_on_drive= set()
 present_audios_on_drive= set()
 # The Google Drive API version to use.
@@ -24,7 +24,7 @@ credentials = service_account.Credentials.from_service_account_file(
 drive_service = build('drive', API_VERSION, credentials=credentials)
 
 
-def download_audio_files(drive_id,folder_id,file_name,lang,wav_unique_prompt_texts,unique_prompt_texts,depth=0):
+def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_texts,unique_prompt_texts,depth=0):
     # # Query for audio files in the selected folder
     
     query_params = {
@@ -47,10 +47,11 @@ def download_audio_files(drive_id,folder_id,file_name,lang,wav_unique_prompt_tex
         file_name = audio_file["name"]
         file_id = audio_file["id"]
         file_name=get_correct_file_name(file_name)
-
+        print(file_name+" "+"checking in"+" "+fileName)
         if file_name in wav_unique_prompt_texts or file_name in unique_prompt_texts:
             if file_name not in present_audios_on_drive:
                 name=file_name.lower()
+                
     
                 if name.endswith('.wav'):
                     new_file_name=name.replace(".wav", ".mp3")
@@ -97,6 +98,7 @@ def list_contents_and_download(drive_id, folder_id,lang,wav_unique_prompt_texts,
     
 
     for content in contents:
+        print('  ' * depth + f'{content["name"]} ({content["id"]})')
         if content['mimeType'] == 'application/vnd.google-apps.folder':
             # If it's a folder, call the function recursively
             list_contents_and_download(drive_id, content['id'],lang,wav_unique_prompt_texts,unique_prompt_texts, depth + 1)
@@ -118,6 +120,7 @@ def list_english_content(drive_id, folder_id,unique_prompt_texts,lang,wav_unique
     contents = results.get('files', [])
 
     for i, content in enumerate(contents, start=1):
+        print('  ' * depth + f'{content["name"]} ({content["id"]})')
         content_name=content["name"].lower()
         processed_string = content_name.replace(" ", "").replace("-", "").lower()
         if lang in processed_string:
@@ -138,6 +141,7 @@ def list_contents_of_folder(drive_id, folder_id,unique_prompt_texts,lang,wav_uni
     selected_folder=None
 
     for i, content in enumerate(contents, start=1):
+        print('  ' * depth + f'{content["name"]} ({content["id"]})')
         content_name=content["name"].lower()
         if "english" in content_name:
             list_english_content(drive_id, content["id"],unique_prompt_texts,lang,wav_unique_prompt_texts, depth + 1)

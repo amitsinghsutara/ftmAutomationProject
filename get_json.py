@@ -6,7 +6,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 # Path to the JSON key file you downloaded when setting up the service account.
-KEY_FILE = '/home/amitsingh/Documents/Automation Scripts/credentials.json'
+KEY_FILE = './credentials.json'
 
 # The Google Drive API version to use.
 API_VERSION = 'v3'
@@ -49,10 +49,6 @@ def list_initial_files(drive_id,folder_id,depth,lang):
 
 def generate_json_file(lang,id):
     url = 'https://us-central1-ftm-b9d99.cloudfunctions.net/hello-world?act=generate&sheet='+id
-    # lang_folder='/run/media/amitsingh/New Volume/Sutara/NewProject/FeedTheMonsterJS/lang/'+lang
-    # if not os.path.exists(lang_folder):
-        # os.makedirs(lang_folder)
-# Make a GET request to fetch the JSON data
     
     
     response = requests.get(url)
@@ -62,14 +58,9 @@ def generate_json_file(lang,id):
     # Parse the JSON content
         json_data = response.json()
         
-    # Define the path for the output JSON file
-        # output_json_file = lanugageJsonPath
+    
         result =ProcessLookupError(json_data)
-    # # Save the JSON data to a local JSON file with proper encoding
-    #     with open(output_json_file, 'w', encoding='utf-8') as json_file:
-    #         json.dump(json_data, json_file, indent=4, ensure_ascii=False)
 
-        # print(f"JSON data saved to {output_json_file}")
         return json_data
     else:
         print(f"Failed to fetch JSON data. Status code: {response.status_code}")
