@@ -1,13 +1,5 @@
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import gdown
-import base64
-import requests
-import shutil
-import json
-import re
-import subprocess
-from pydub import AudioSegment
 
 # Path to the JSON key file you downloaded when setting up the service account.
 KEY_FILE = './credentials.json'
