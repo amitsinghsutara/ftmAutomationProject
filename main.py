@@ -1,5 +1,6 @@
 import functions_framework
 import re
+import unicodedata
 import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -79,11 +80,13 @@ def find_unique_audio_urls(obj, unique_audio_keys=None):
                         match = re.search(r'/(\w+\.mp3)$', url)
                         if match:
                             audio_key = match.group(1)
+                            audio_key=unicodedata.normalize('NFC', audio_key)
                             unique_audio_keys.add(audio_key)
                 elif isinstance(value, str):
                     match = re.search(r'/(\w+\.mp3)$', value)
                     if match:
                         audio_key = match.group(1)
+                        audio_key=unicodedata.normalize('NFC', audio_key)
                         unique_audio_keys.add(audio_key)
             if isinstance(value, (dict, list)):
                 find_unique_audio_urls(value, unique_audio_keys)
@@ -153,6 +156,7 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
         file_name = audio_file["name"]
         file_id = audio_file["id"]
         file_name=get_correct_file_name(file_name)
+        file_name=unicodedata.normalize('NFC', file_name)
         print(file_name+" "+"checking in"+" "+fileName)
         if file_name in wav_unique_prompt_texts or file_name in unique_prompt_texts:
             if file_name not in present_audios_on_drive:
