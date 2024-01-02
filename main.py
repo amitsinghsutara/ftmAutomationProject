@@ -46,8 +46,10 @@ def content_verification(request):
             return
         
         wav_prompt_text=find_unique_wav_audio_texts(prompt_text)
-        output= check_in_drive(shared_drive_id,root_folder_id,desired_folder_id,prompt_text,wav_prompt_text,lang)
-        if not output:
+        m4a_prompt_text=get_m4a_prompt_texts(prompt_text)
+        print(m4a_prompt_text)
+        output= check_in_drive(shared_drive_id,root_folder_id,desired_folder_id,prompt_text,wav_prompt_text,m4a_prompt_text,lang)
+        if not output and json_data:
             body += "JSON generation process is successful.\n"
             body += "Checking for audios is done. \n The Language is ready to be build"
             inform_user_about_updates(receiver,subject,body)
@@ -66,7 +68,6 @@ def content_verification(request):
 
 
 def find_unique_audio_urls(obj, unique_audio_keys=None):
-    print(obj)
     feedback_words = ['amazing.mp3', 'fantastic.mp3', 'great1.mp3', 'amazing.mp3']
     if unique_audio_keys is None:
         unique_audio_keys = set()
@@ -80,13 +81,13 @@ def find_unique_audio_urls(obj, unique_audio_keys=None):
                         match = re.search(r'/(\w+\.mp3)$', url)
                         if match:
                             audio_key = match.group(1)
-                            audio_key=unicodedata.normalize('NFC', audio_key)
+                            audio_key=unicodedata.normalize('NFKD', audio_key)
                             unique_audio_keys.add(audio_key)
                 elif isinstance(value, str):
                     match = re.search(r'/(\w+\.mp3)$', value)
                     if match:
                         audio_key = match.group(1)
-                        audio_key=unicodedata.normalize('NFC', audio_key)
+                        audio_key=unicodedata.normalize('NFKD', audio_key)
                         unique_audio_keys.add(audio_key)
             if isinstance(value, (dict, list)):
                 find_unique_audio_urls(value, unique_audio_keys)
@@ -105,8 +106,12 @@ def find_unique_wav_audio_texts(unique_prompt_texts):
         wav_prompt_texts.add(wav_prompt)
     return wav_prompt_texts
 
-
-
+def get_m4a_prompt_texts(unique_prompt_texts):
+    m4a_prompt_texts=set()
+    for prompt_text in unique_prompt_texts:
+        m4a_prompt = prompt_text.replace(".mp3", ".m4a")
+        m4a_prompt_texts.add(m4a_prompt)
+    return m4a_prompt_texts
 
 
 
@@ -133,7 +138,7 @@ credentials = service_account.Credentials.from_service_account_file(
 drive_service = build('drive', API_VERSION, credentials=credentials)
 
 
-def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_texts,unique_prompt_texts,depth=0):
+def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_texts,m4a_prompt_text,unique_prompt_texts,depth=0):
     # # Query for audio files in the selected folder
     
     query_params = {
@@ -141,6 +146,7 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
         'includeItemsFromAllDrives': True,
         'corpora': 'drive',
         'driveId': drive_id,
+        'pageSize':150,
         'q': f"'{folder_id}' in parents ",
     }
     
@@ -150,21 +156,28 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
         return
     
     
-
+    count=0
     # Loop through the audio files and download each one
     for audio_file in audio_files:
-        file_name = audio_file["name"]
+        count =count+1
+        file_name = audio_file["name"].lower()
         file_id = audio_file["id"]
         file_name=get_correct_file_name(file_name)
-        file_name=unicodedata.normalize('NFC', file_name)
-        print(file_name+" "+"checking in"+" "+fileName)
-        if file_name in wav_unique_prompt_texts or file_name in unique_prompt_texts:
+        file_name=unicodedata.normalize('NFKD', file_name)
+        print(file_name+" "+"checking in"+" "+fileName)   
+                
+                
+        
+        if file_name in wav_unique_prompt_texts or file_name in unique_prompt_texts  or file_name in m4a_prompt_text:
             if file_name not in present_audios_on_drive:
                 name=file_name.lower()
                 
     
                 if name.endswith('.wav'):
                     new_file_name=name.replace(".wav", ".mp3")
+                    present_audios_on_drive.add(new_file_name)
+                elif name.endswith(".m4a"):
+                    new_file_name=name.replace(".m4a", ".mp3")
                     present_audios_on_drive.add(new_file_name)
                 elif name.endswith('.mp3'):
                     present_audios_on_drive.add(name)
@@ -174,7 +187,7 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
 
 def get_correct_file_name(filename):
     keywords_to_remove = ["_feedback", "_sound", "_word", "_syllable", "_memory"]
-    if filename == "fantastic1.wav" or filename == "fantastic1.mp3":
+    if filename == "fantastic1.wav" or filename == "fantastic1.mp3" or filename == "fantastic1_feedback.wav" or filename == "fantastic1_feedback.mp3":
         filename = "fantastic.wav"
         print(filename+"<<<<<<<<<<<")
 
@@ -190,7 +203,7 @@ def get_correct_file_name(filename):
 
 
 
-def list_contents_and_download(drive_id, folder_id,lang,wav_unique_prompt_texts,unique_prompt_texts, depth=0):
+def list_contents_and_download(drive_id, folder_id,lang,wav_unique_prompt_texts,m4a_prompt_text,unique_prompt_texts, depth=0):
     # Query for contents in the selected folder
     
     query_params = {
@@ -208,16 +221,16 @@ def list_contents_and_download(drive_id, folder_id,lang,wav_unique_prompt_texts,
     
 
     for content in contents:
-        print('  ' * depth + f'{content["name"]} ({content["id"]})')
+        print('  ' * depth + f'{content["name"].lower()} ({content["id"]})')
         if content['mimeType'] == 'application/vnd.google-apps.folder':
             # If it's a folder, call the function recursively
-            list_contents_and_download(drive_id, content['id'],lang,wav_unique_prompt_texts,unique_prompt_texts, depth + 1)
+            list_contents_and_download(drive_id, content['id'],lang,wav_unique_prompt_texts,m4a_prompt_text,unique_prompt_texts, depth + 1)
         
             
-        download_audio_files(drive_id, content['id'],content['name'],lang,wav_unique_prompt_texts,unique_prompt_texts,depth+1)
+        download_audio_files(drive_id, content['id'],content['name'].lower(),lang,wav_unique_prompt_texts,m4a_prompt_text,unique_prompt_texts,depth+1)
 
 
-def list_english_content(drive_id, folder_id,unique_prompt_texts,lang,wav_unique_prompt_texts, depth):
+def list_english_content(drive_id, folder_id,unique_prompt_texts,lang,wav_unique_prompt_texts,m4a_prompt_text, depth):
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
@@ -225,7 +238,15 @@ def list_english_content(drive_id, folder_id,unique_prompt_texts,lang,wav_unique
         'driveId': drive_id,
         'q': f"'{folder_id}' in parents",
     }
-
+    if lang == "austrailianenglish":
+        lang="englishaustrailian"
+        
+    if lang=="indianenglish":
+        lang="englishindian"
+        
+    if lang  =="saenglish":
+        lang="southafricaenglish"
+                
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
 
@@ -234,9 +255,9 @@ def list_english_content(drive_id, folder_id,unique_prompt_texts,lang,wav_unique
         content_name=content["name"].lower()
         processed_string = content_name.replace(" ", "").replace("-", "").lower()
         if lang in processed_string:
-            list_contents_and_download(drive_id,content["id"],lang,wav_unique_prompt_texts,unique_prompt_texts,depth+1)
+            list_contents_and_download(drive_id,content["id"],lang,wav_unique_prompt_texts,m4a_prompt_text,unique_prompt_texts,depth+1)
 
-def list_contents_of_folder(drive_id, folder_id,unique_prompt_texts,lang,wav_unique_prompt_texts, depth=0):
+def list_contents_of_folder(drive_id, folder_id,unique_prompt_texts,lang,wav_unique_prompt_texts,m4a_prompt_text, depth=0):
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
@@ -254,14 +275,14 @@ def list_contents_of_folder(drive_id, folder_id,unique_prompt_texts,lang,wav_uni
         print('  ' * depth + f'{content["name"]} ({content["id"]})')
         content_name=content["name"].lower()
         if "english" in content_name:
-            list_english_content(drive_id, content["id"],unique_prompt_texts,lang,wav_unique_prompt_texts, depth + 1)
+            list_english_content(drive_id, content["id"],unique_prompt_texts,lang,wav_unique_prompt_texts,m4a_prompt_text, depth + 1)
         
         if lang in content_name:
-            list_contents_and_download(drive_id,content["id"],lang,wav_unique_prompt_texts,unique_prompt_texts,depth+1)
+            list_contents_and_download(drive_id,content["id"],lang,wav_unique_prompt_texts,m4a_prompt_text,unique_prompt_texts,depth+1)
         
     
 
-def check_in_drive(drive_id, folder_id, desired_folder_id,unique_prompt_texts,wav_unique_prompt_texts,lang,depth =0):
+def check_in_drive(drive_id, folder_id, desired_folder_id,unique_prompt_texts,wav_unique_prompt_texts,m4a_prompt_text,lang,depth =0):
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
@@ -277,12 +298,12 @@ def check_in_drive(drive_id, folder_id, desired_folder_id,unique_prompt_texts,wa
     for folder in folders:
         if folder["id"] == desired_folder_id:
             # You've reached the desired folder, now you can list its contents or perform any desired actions.
-            list_contents_of_folder(drive_id, folder["id"],unique_prompt_texts,lang,wav_unique_prompt_texts, depth + 1)
+            list_contents_of_folder(drive_id, folder["id"],unique_prompt_texts,lang,wav_unique_prompt_texts,m4a_prompt_text, depth + 1)
            
                         
         else:
             if folder["id"]=="1241p6yE0at78OZVdTewJSWS6XdjPjx93" or folder["id"]=="1lsbOukZZTFGJI8tTMRGDTi1QpuiAGJaR" or folder["id"]=="1dVw3lRUcP0vHP8qGhGqeHmG0Elflx2HY" or folder["id"]=="1xTln0bFAGJe3hhWu_KdpdQb7gQcSAktG":
-                check_in_drive(drive_id, folder['id'], desired_folder_id,unique_prompt_texts,wav_unique_prompt_texts,lang, depth + 1)
+                check_in_drive(drive_id, folder['id'], desired_folder_id,unique_prompt_texts,wav_unique_prompt_texts,m4a_prompt_text,lang, depth + 1)
     
     missing_audios_on_drive =unique_prompt_texts-present_audios_on_drive            
     return missing_audios_on_drive
