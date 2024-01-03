@@ -2,6 +2,7 @@ import functions_framework
 import re
 import unicodedata
 import requests
+import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.discovery import build
@@ -39,7 +40,9 @@ def content_verification(request):
             return
         
         print("Json Data Generated sucessfully")
-        prompt_text=find_unique_audio_urls(json_data)
+        # prompt_text=find_unique_audio_urls(json_data)
+        prompt_text =find_prompt_audios(json_data)
+        print(prompt_text)
         if not prompt_text:
             body="There was error while generating json,\n Make sure that the language name is correct"
             inform_user_about_updates(receiver,subject,body)
@@ -65,39 +68,37 @@ def content_verification(request):
 
                         
                         
-
-
-def find_unique_audio_urls(obj, unique_audio_keys=None):
+def find_prompt_audios(data, prompt_audio_urls=None):
     feedback_words = ['amazing.mp3', 'fantastic.mp3', 'great1.mp3', 'amazing.mp3']
-    if unique_audio_keys is None:
-        unique_audio_keys = set()
+    if prompt_audio_urls is None:
+        prompt_audio_urls = set()
+        
     for feedback in feedback_words:
-        unique_audio_keys.add(feedback)
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if key == "PromptAudio" or key == "FeedbackAudios" or key == "OtherAudios":
-                if isinstance(value, list):
-                    for url in value:
-                        match = re.search(r'/(\w+\.mp3)$', url)
-                        if match:
-                            audio_key = match.group(1)
-                            audio_key=unicodedata.normalize('NFKD', audio_key)
-                            unique_audio_keys.add(audio_key)
-                elif isinstance(value, str):
-                    match = re.search(r'/(\w+\.mp3)$', value)
-                    if match:
-                        audio_key = match.group(1)
-                        audio_key=unicodedata.normalize('NFKD', audio_key)
-                        unique_audio_keys.add(audio_key)
-            if isinstance(value, (dict, list)):
-                find_unique_audio_urls(value, unique_audio_keys)
+        prompt_audio_urls.add(feedback)
+    try:
+       
+            
+        if "Levels" in data:
+                for level in data["Levels"]:
+                    if "Puzzles" in level:
+                        for puzzle in level["Puzzles"]:
+                            if "prompt" in puzzle and "PromptAudio" in puzzle["prompt"]:
+                                prompt_audio_url = puzzle["prompt"]["PromptAudio"]
+                                if os.path.basename(prompt_audio_url) not in prompt_audio_urls:
+                                    prompt_text=unicodedata.normalize('NFKD', os.path.basename(prompt_audio_url))
+                                    prompt_audio_urls.add(prompt_text)
 
-    elif isinstance(obj, list):
-        for item in obj:
-            if isinstance(item, (dict, list)):
-                find_unique_audio_urls(item, unique_audio_keys)
+        if "FeedbackAudios" in data:
+                for feedbackAudioUrl in data["FeedbackAudios"]:
+                    if os.path.basename(feedbackAudioUrl) not in prompt_audio_url:
+                        feedback_text=unicodedata.normalize('NFKD',os.path.basename(feedbackAudioUrl))
+                        prompt_audio_urls.add(feedback_text)
+            
+        return prompt_audio_urls
+    except Exception as e:
+        print("Error finding prompt audios:", e)
+        return prompt_audio_urls
 
-    return unique_audio_keys
 
 def find_unique_wav_audio_texts(unique_prompt_texts):
     wav_prompt_texts=set()
@@ -151,6 +152,7 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
     }
     
     results = drive_service.files().list(**query_params).execute()
+    
     audio_files = results.get('files', [])
     if not audio_files:
         return
@@ -184,12 +186,12 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
                 
                         
 
-
 def get_correct_file_name(filename):
     keywords_to_remove = ["_feedback", "_sound", "_word", "_syllable", "_memory"]
     if filename == "fantastic1.wav" or filename == "fantastic1.mp3" or filename == "fantastic1_feedback.wav" or filename == "fantastic1_feedback.mp3":
         filename = "fantastic.wav"
         print(filename+"<<<<<<<<<<<")
+                        
 
         
     for keyword in keywords_to_remove:
@@ -211,6 +213,7 @@ def list_contents_and_download(drive_id, folder_id,lang,wav_unique_prompt_texts,
         'includeItemsFromAllDrives': True,
         'corpora': 'drive',
         'driveId': drive_id,
+        'pageSize':150,
         'q': f"'{folder_id}' in parents ",
     }
     
