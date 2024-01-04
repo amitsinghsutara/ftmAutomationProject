@@ -166,7 +166,7 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
         file_id = audio_file["id"]
         file_name=get_correct_file_name(file_name)
         file_name=unicodedata.normalize('NFKD', file_name)
-        print(file_name+" "+"checking in"+" "+fileName)   
+        print(str(count)+"___"+file_name+" "+"checking in"+" "+fileName)   
                 
                 
         
@@ -186,8 +186,10 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
                 
                         
 
-def get_correct_file_name(filename):
-    keywords_to_remove = ["_feedback", "_sound", "_word", "_syllable", "_memory"]
+def get_correct_file_name(name):
+    filename, extension = os.path.splitext(name)
+    print(">>>>>>>>>>>",extension)
+    keywords_to_remove = ["_feedback", "_sound", "_word", "_syllable", "_memory",".wav",".mp3"]
     if filename == "fantastic1.wav" or filename == "fantastic1.mp3" or filename == "fantastic1_feedback.wav" or filename == "fantastic1_feedback.mp3":
         filename = "fantastic.wav"
         print(filename+"<<<<<<<<<<<")
@@ -197,7 +199,11 @@ def get_correct_file_name(filename):
     for keyword in keywords_to_remove:
         if keyword in filename:
             filename = filename.replace(keyword, "")
-
+            
+    filename=re.sub(r'[\d_]', '', filename)+extension
+    filename=" ".join(filename.split())
+            
+    print(">>>>>>>>>>>>>",filename)
     return filename.lower()
 
 
@@ -242,7 +248,7 @@ def list_english_content(drive_id, folder_id,unique_prompt_texts,lang,wav_unique
         'q': f"'{folder_id}' in parents",
     }
     if lang == "austrailianenglish":
-        lang="englishaustrailian"
+        lang="englishaustralian"
         
     if lang=="indianenglish":
         lang="englishindian"
@@ -275,7 +281,7 @@ def list_contents_of_folder(drive_id, folder_id,unique_prompt_texts,lang,wav_uni
     selected_folder=None
 
     for i, content in enumerate(contents, start=1):
-        print('  ' * depth + f'{content["name"]} ({content["id"]})')
+        print('  ' * depth +" inside of folder"+ f'{content["name"]} ({content["id"]})')
         content_name=content["name"].lower()
         if "english" in content_name:
             list_english_content(drive_id, content["id"],unique_prompt_texts,lang,wav_unique_prompt_texts,m4a_prompt_text, depth + 1)
