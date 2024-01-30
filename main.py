@@ -147,7 +147,7 @@ def download_audio_files(drive_id,folder_id,fileName,lang,wav_unique_prompt_text
         'includeItemsFromAllDrives': True,
         'corpora': 'drive',
         'driveId': drive_id,
-        'pageSize':150,
+        'pageSize':500,
         'q': f"'{folder_id}' in parents ",
     }
     
@@ -219,7 +219,7 @@ def list_contents_and_download(drive_id, folder_id,lang,wav_unique_prompt_texts,
         'includeItemsFromAllDrives': True,
         'corpora': 'drive',
         'driveId': drive_id,
-        'pageSize':150,
+        'pageSize':500,
         'q': f"'{folder_id}' in parents ",
     }
     
