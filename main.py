@@ -91,16 +91,18 @@ def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,de
         'driveId': root_drive_id,
         'q': f"'{drive_id}' in parents and mimeType = 'application/vnd.google-apps.folder'",
     }
+    missing_audios= set()
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
     try:
     
         for i, content in enumerate(contents, start=1):
-            # print('  ' * depth + f'{content["name"]} ({content["id"]})')
+            print('  ' * depth + f'{content["name"]} ({content["id"]})')
             if content["id"] =="1241p6yE0at78OZVdTewJSWS6XdjPjx93":
                 check_missing_audio_assets_in_drive(drive_service,root_drive_id,content["id"],depth+1)
             elif content["id"]=="16mfArt7NQds_jTYPYAp_Hp7thkQ3SD8v":
-               missing_feedback_audios= check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],depth+1)
+            #    missing_feedback_audios= check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],depth+1)
+               missing_audios= check_audios_in_folder(drive_service,root_drive_id,content["id"],depth+1)
             
     except googleapiclient.errors.HttpError as e:
         error_details = e._get_reason()
@@ -110,10 +112,47 @@ def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,de
             # Handle other types of errors
             print("An error occurred:", error_details)        
                          
-    missing_audios= set()
+    
     
     return missing_audios
 
+def check_audios_in_folder(drive_service, root_drive_id,drive_id,depth):
+    
+    print(">>>>")
+    query_params = {
+        'supportsAllDrives': True,
+        'includeItemsFromAllDrives': True,
+        'corpora': 'drive',
+        'driveId': root_drive_id,
+        'pageSize':500,
+        'q': f"'{drive_id}' in parents ",
+    }
+    results = drive_service.files().list(**query_params).execute()
+    contents = results.get('files', [])
+    for i, content in enumerate(contents, start=1):
+        print('  ' * depth + f'{content["name"]} ({content["id"]})')
+        if content["id"]=="1_OKwBPcv9PQqp8v-L4sNTFhX0tF6NtgH":
+            check_audios_in_folder(drive_service, root_drive_id,content["id"],depth)
+            
+        if lang.lower() ==content["name"].lower():
+            missing_audios= check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
+    return depth
+
+def check_audios_in_lang_folder(drive_service, root_drive_id,drive_id,depth ):
+    query_params = {
+        'supportsAllDrives': True,
+        'includeItemsFromAllDrives': True,
+        'corpora': 'drive',
+        'driveId': root_drive_id,
+        'pageSize':500,
+        'q': f"'{drive_id}' in parents ",
+    }
+    results = drive_service.files().list(**query_params).execute()
+    contents = results.get('files', [])
+    for i, content in enumerate(contents, start=1):
+        print('  ' * depth + f'{content["name"]} ({content["id"]})'+">>>>")
+        check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
+    return depth
 def check_feedback_audios_in_drive(drive_service, root_drive_id,drive_id,depth ):
     query_params = {
         'supportsAllDrives': True,
@@ -126,8 +165,8 @@ def check_feedback_audios_in_drive(drive_service, root_drive_id,drive_id,depth )
     contents = results.get('files', [])
     for i, content in enumerate(contents, start=1):
         print('  ' * depth + f'{content["name"]} ({content["id"]})')
-        if content["id"]=="1cDNqpl6hpponslP8XFAc37BNlZv3bW4X" or content["id"]=="1eXmu1e8G7l881tHB-g6zL9FBPMmlNvI3" or content["id"]=="1qhKKLccb2jznBY070Cq4h5ozL41EweSk":
-            check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],depth+1)
+        # if content["id"]=="1cDNqpl6hpponslP8XFAc37BNlZv3bW4X" or content["id"]=="1eXmu1e8G7l881tHB-g6zL9FBPMmlNvI3" or content["id"]=="1qhKKLccb2jznBY070Cq4h5ozL41EweSk":
+        #     check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],depth+1)
 
 
         if lang.lower() == content["name"].lower():
@@ -147,7 +186,9 @@ def list_missing_feedback_audios(drive_service, root_drive_id,drive_id,depth):
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
     for i, content in enumerate(contents, start=1):
-        print(">>>>>")
+        filename, extension = os.path.splitext(content["name"].lower())
+        if filename in feedback_audios:
+            print("feedback audios available")
         
         print('  ' * depth + f'{content["name"]} ({content["id"]})'+lang.lower())
         
