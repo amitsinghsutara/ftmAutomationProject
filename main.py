@@ -26,7 +26,10 @@ sec_file = './credentials.json'
 amit_json ='./sec.json'
 # The Google Drive API version to use.
 API_VERSION = 'v3'
-lang="English"
+lang="Hindi"
+assesment_data=set()
+missing_audios=set()
+present_audios=set()
 feedback_audios=["fantastic","great","amazing"]
 # Create a service account credentials object.
 credentials = service_account.Credentials.from_service_account_file(
@@ -63,6 +66,7 @@ def content_verification(request):
         lang=request.args.get("lang","English")
        
     assesment_data=get_assessment_data(gc,sheet_id)
+    print(assesment_data)
     missing_audio_assets=check_missing_audio_assets_in_drive(drive_service, root_drive_id,root_drive_id,depth=0)
     return f"missing audios in google drive-->{body}"
 
@@ -117,15 +121,14 @@ def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,de
     return missing_audios
 
 def check_audios_in_folder(drive_service, root_drive_id,drive_id,depth):
-    
-    print(">>>>")
+
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
         'corpora': 'drive',
         'driveId': root_drive_id,
         'pageSize':500,
-        'q': f"'{drive_id}' in parents ",
+        'q': f"'{drive_id}' in parents and mimeType = 'application/vnd.google-apps.folder'",
     }
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
@@ -135,7 +138,10 @@ def check_audios_in_folder(drive_service, root_drive_id,drive_id,depth):
             check_audios_in_folder(drive_service, root_drive_id,content["id"],depth)
             
         if lang.lower() ==content["name"].lower():
-            missing_audios= check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
+            print(">>>>>",lang)
+            if content['mimeType'] == 'application/vnd.google-apps.folder':
+                check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
+            # missing_audios= check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
     return depth
 
 def check_audios_in_lang_folder(drive_service, root_drive_id,drive_id,depth ):
@@ -150,9 +156,27 @@ def check_audios_in_lang_folder(drive_service, root_drive_id,drive_id,depth ):
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
     for i, content in enumerate(contents, start=1):
-        print('  ' * depth + f'{content["name"]} ({content["id"]})'+">>>>")
-        check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
+        # print('  ' * depth + f'{content["name"]} ({content["id"]})')
+        if content['mimeType'] == 'application/vnd.google-apps.folder':
+           print("AAAAA")
+           check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
+        else :
+            
+           compare_audios_in_lang_folder(content["name"].lower())   
+        
     return depth
+
+def compare_audios_in_lang_folder(file_name):
+    file_name, extension = os.path.splitext(file_name)
+    file_name=unicodedata.normalize("NFKD",file_name)
+    print(file_name)
+    if file_name in assesment_data:
+        print(">>>",file_name)
+        present_audios.add(file_name)
+    
+        
+    return file_name
+
 def check_feedback_audios_in_drive(drive_service, root_drive_id,drive_id,depth ):
     query_params = {
         'supportsAllDrives': True,
