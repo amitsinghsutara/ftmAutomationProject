@@ -16,4 +16,4 @@ pyasn1-modules>=0.3.0,<1.0.0
 requests>=2.31.0,<3.0.0
 rsa>=4.9,<5.0.0
 urllib3>=2.1.0,<3.0.0
-unicodedata>=2.6,<3.10
+pygsheets==2.0.6
