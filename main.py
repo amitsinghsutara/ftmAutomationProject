@@ -41,7 +41,7 @@ credentials = service_account.Credentials.from_service_account_file(
 drive_service = build('drive', API_VERSION, credentials=credentials)
 
 @functions_framework.http
-def content_verification(request):
+def assessment_content_check(request):
     """HTTP Cloud Function.
     Args:
         request (flask.Request): The request object.
