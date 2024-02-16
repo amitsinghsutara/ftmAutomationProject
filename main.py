@@ -2,6 +2,10 @@ import functions_framework
 import re
 import unicodedata
 import requests
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 import os
 import functions_framework
 import codecs
@@ -26,10 +30,8 @@ sec_file = './credentials.json'
 amit_json ='./sec.json'
 # The Google Drive API version to use.
 API_VERSION = 'v3'
-lang="Hindi"
-assesment_data=set()
-missing_audios=set()
 present_audios=set()
+missing_assessment_audios=set()
 feedback_audios=["fantastic","great","amazing"]
 # Create a service account credentials object.
 credentials = service_account.Credentials.from_service_account_file(
@@ -54,20 +56,31 @@ def content_verification(request):
 
     request_json = request.get_json(silent=True)
     request_args = request.args
-    
+    receiver=["amit@sutara.org","nikhilchoudhary@sutara.org"]
     
     body = "Hello,\n\n"
     if request_json and "sheet_id" in request_json:
-        sheet_id = request_json["sheet_id"]
-    elif request_json and "lang" in request_json:
-        lang =request_json["lang"]
+        sheet_id = request_json["sheet_id"]  
     else:
         sheet_id = request.args.get("sheet_id", "English")
-        lang=request.args.get("lang","English")
-       
+        
+        lang =request.args.get("lang", "English")
+         
+    subject=lang+"  "+"Assessment Survey Content Check Report"
+     
     assesment_data=get_assessment_data(gc,sheet_id)
-    print(assesment_data)
-    missing_audio_assets=check_missing_audio_assets_in_drive(drive_service, root_drive_id,root_drive_id,depth=0)
+    if not assesment_data:
+        body="There was error while generating json,\n Make sure that the language name is correct" 
+        inform_user_about_updates(receiver,subject,body)
+    check_missing_audio_assets_in_drive(drive_service, root_drive_id,root_drive_id,assesment_data,lang,depth=0)
+    missing_assessment_audios=assesment_data-present_audios
+    if not missing_assessment_audios:        
+        body="Sucess,\n All the Assessment Audios are available!" 
+        inform_user_about_updates(receiver,subject,body) 
+    else:
+        body="Checking for audios are done,\n Here's the list of missing audios in assessment!" 
+        body+="\n".join(missing_assessment_audios)
+        inform_user_about_updates(receiver,subject,body)
     return f"missing audios in google drive-->{body}"
 
 def get_assessment_data(gc, sheet_id):
@@ -84,10 +97,11 @@ def get_unique_content(fetched_content):
     for sublist in fetched_content:
       for item in sublist:
         item = unicodedata.normalize('NFKD',item)
+        item=item.strip()
         unique_characters.update(item.split(','))
     return unique_characters
 
-def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,depth ):
+def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,assesment_data,lang,depth ):
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
@@ -95,7 +109,6 @@ def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,de
         'driveId': root_drive_id,
         'q': f"'{drive_id}' in parents and mimeType = 'application/vnd.google-apps.folder'",
     }
-    missing_audios= set()
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
     try:
@@ -103,10 +116,10 @@ def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,de
         for i, content in enumerate(contents, start=1):
             print('  ' * depth + f'{content["name"]} ({content["id"]})')
             if content["id"] =="1241p6yE0at78OZVdTewJSWS6XdjPjx93":
-                check_missing_audio_assets_in_drive(drive_service,root_drive_id,content["id"],depth+1)
+                check_missing_audio_assets_in_drive(drive_service,root_drive_id,content["id"],assesment_data,lang,depth+1)
             elif content["id"]=="16mfArt7NQds_jTYPYAp_Hp7thkQ3SD8v":
-            #    missing_feedback_audios= check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],depth+1)
-               missing_audios= check_audios_in_folder(drive_service,root_drive_id,content["id"],depth+1)
+               check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],assesment_data,lang,depth+1)
+               check_audios_in_folder(drive_service,root_drive_id,content["id"],assesment_data,lang,depth+1)
             
     except googleapiclient.errors.HttpError as e:
         error_details = e._get_reason()
@@ -118,9 +131,8 @@ def check_missing_audio_assets_in_drive(drive_service, root_drive_id,drive_id,de
                          
     
     
-    return missing_audios
 
-def check_audios_in_folder(drive_service, root_drive_id,drive_id,depth):
+def check_audios_in_folder(drive_service, root_drive_id,drive_id,assesment_data,lang,depth):
 
     query_params = {
         'supportsAllDrives': True,
@@ -135,16 +147,14 @@ def check_audios_in_folder(drive_service, root_drive_id,drive_id,depth):
     for i, content in enumerate(contents, start=1):
         print('  ' * depth + f'{content["name"]} ({content["id"]})')
         if content["id"]=="1_OKwBPcv9PQqp8v-L4sNTFhX0tF6NtgH":
-            check_audios_in_folder(drive_service, root_drive_id,content["id"],depth)
+            check_audios_in_folder(drive_service, root_drive_id,content["id"],assesment_data,lang,depth)
             
         if lang.lower() ==content["name"].lower():
-            print(">>>>>",lang)
             if content['mimeType'] == 'application/vnd.google-apps.folder':
-                check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
-            # missing_audios= check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
-    return depth
+               check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],assesment_data,lang,depth)
+            
 
-def check_audios_in_lang_folder(drive_service, root_drive_id,drive_id,depth ):
+def check_audios_in_lang_folder(drive_service, root_drive_id,drive_id,assesment_data,lang,depth ):
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
@@ -156,28 +166,22 @@ def check_audios_in_lang_folder(drive_service, root_drive_id,drive_id,depth ):
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
     for i, content in enumerate(contents, start=1):
-        # print('  ' * depth + f'{content["name"]} ({content["id"]})')
         if content['mimeType'] == 'application/vnd.google-apps.folder':
-           print("AAAAA")
-           check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],depth)
+           check_audios_in_lang_folder(drive_service, root_drive_id,content["id"],assesment_data,lang,depth)
         else :
             
-           compare_audios_in_lang_folder(content["name"].lower())   
+          compare_audios_in_lang_folder(content["name"].lower(),assesment_data)   
         
-    return depth
 
-def compare_audios_in_lang_folder(file_name):
+def compare_audios_in_lang_folder(file_name,assesment_data):
     file_name, extension = os.path.splitext(file_name)
     file_name=unicodedata.normalize("NFKD",file_name)
-    print(file_name)
-    if file_name in assesment_data:
-        print(">>>",file_name)
+    file_name=re.sub(r'[0-9\s]', '', file_name)
+    if file_name in assesment_data and file_name not in present_audios:
         present_audios.add(file_name)
-    
         
-    return file_name
 
-def check_feedback_audios_in_drive(drive_service, root_drive_id,drive_id,depth ):
+def check_feedback_audios_in_drive(drive_service, root_drive_id,drive_id,assesment_data,lang,depth ):
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
@@ -188,17 +192,16 @@ def check_feedback_audios_in_drive(drive_service, root_drive_id,drive_id,depth )
     results = drive_service.files().list(**query_params).execute()
     contents = results.get('files', [])
     for i, content in enumerate(contents, start=1):
-        print('  ' * depth + f'{content["name"]} ({content["id"]})')
-        # if content["id"]=="1cDNqpl6hpponslP8XFAc37BNlZv3bW4X" or content["id"]=="1eXmu1e8G7l881tHB-g6zL9FBPMmlNvI3" or content["id"]=="1qhKKLccb2jznBY070Cq4h5ozL41EweSk":
-        #     check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],depth+1)
+        print('  ' * depth + f'{content["name"]} ({content["id"]})'+">>>>>>")
+        if content["id"]=="1cDNqpl6hpponslP8XFAc37BNlZv3bW4X" or content["id"]=="1eXmu1e8G7l881tHB-g6zL9FBPMmlNvI3" or content["id"]=="1qhKKLccb2jznBY070Cq4h5ozL41EweSk":
+            check_feedback_audios_in_drive(drive_service,root_drive_id,content["id"],assesment_data,lang,depth+1)
 
 
         if lang.lower() == content["name"].lower():
-            missing_audios=list_missing_feedback_audios(drive_service,root_drive_id,content["id"],depth+1)
-        
-    return depth
+           list_missing_feedback_audios(drive_service,root_drive_id,content["id"],assesment_data,lang,depth+1)
 
-def list_missing_feedback_audios(drive_service, root_drive_id,drive_id,depth):
+def list_missing_feedback_audios(drive_service, root_drive_id,drive_id,assesment_data,lang,depth):
+    available_feedback_audios={}
     query_params = {
         'supportsAllDrives': True,
         'includeItemsFromAllDrives': True,
@@ -211,11 +214,34 @@ def list_missing_feedback_audios(drive_service, root_drive_id,drive_id,depth):
     contents = results.get('files', [])
     for i, content in enumerate(contents, start=1):
         filename, extension = os.path.splitext(content["name"].lower())
-        if filename in feedback_audios:
-            print("feedback audios available")
+        if filename in feedback_audios and filename not in available_feedback_audios:
+            present_audios.add(filename)
         
-        print('  ' * depth + f'{content["name"]} ({content["id"]})'+lang.lower())
         
-            
+
+def inform_user_about_updates(receiver,subject,body):
+    # Replace these with your Gmail account details and email content
+    gmail_user = 'amit@sutara.org'
+    gmail_app_password = 'pjwt jlkx weuj dzwg'
+     # Create a multipart message
+    msg = MIMEMultipart()
+    msg['From'] = gmail_user
+    msg['To'] = ', '.join(receiver)
+    msg['Subject'] = subject
+
+    # Add the body of the email
+    msg.attach(MIMEText(body, 'plain'))
+     
+    
+
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.ehlo()
+        server.login(gmail_user, gmail_app_password)
+        server.sendmail(gmail_user, receiver, msg.as_string())
+        server.close()
         
-    return depth
+        print('Email sent!')
+    except Exception as exception:
+        inform_user_about_updates(receiver,"Error in Building Lamguage",e)
+        print("Error: %s!\n\n" % exception)
