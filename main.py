@@ -176,10 +176,16 @@ def check_audios_in_lang_folder(drive_service, root_drive_id,drive_id,assesment_
 def compare_audios_in_lang_folder(file_name,assesment_data):
     file_name, extension = os.path.splitext(file_name)
     file_name=unicodedata.normalize("NFKD",file_name)
-    file_name=re.sub(r'[0-9\s]', '', file_name)
+    file_name=get_correct_file_name(file_name)
     if file_name in assesment_data and file_name not in present_audios:
         present_audios.add(file_name)
         
+def get_correct_file_name(file_name):
+    if " .mp" in file_name:
+        file_name =file_name.replace(" .mp","")
+    correct_file_name= re.sub(r'[\d_\s]', '', file_name)
+    
+    return correct_file_name
 
 def check_feedback_audios_in_drive(drive_service, root_drive_id,drive_id,assesment_data,lang,depth ):
     query_params = {
@@ -220,28 +226,28 @@ def list_missing_feedback_audios(drive_service, root_drive_id,drive_id,assesment
         
 
 def inform_user_about_updates(receiver,subject,body):
-    # Replace these with your Gmail account details and email content
-    gmail_user = 'amit@sutara.org'
-    gmail_app_password = 'pjwt jlkx weuj dzwg'
-     # Create a multipart message
-    msg = MIMEMultipart()
-    msg['From'] = gmail_user
-    msg['To'] = ', '.join(receiver)
-    msg['Subject'] = subject
+    # # Replace these with your Gmail account details and email content
+    # gmail_user = 'amit@sutara.org'
+    # gmail_app_password = 'pjwt jlkx weuj dzwg'
+    #  # Create a multipart message
+    # msg = MIMEMultipart()
+    # msg['From'] = gmail_user
+    # msg['To'] = ', '.join(receiver)
+    # msg['Subject'] = subject
 
-    # Add the body of the email
-    msg.attach(MIMEText(body, 'plain'))
+    # # Add the body of the email
+    # msg.attach(MIMEText(body, 'plain'))
      
     
 
-    try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.ehlo()
-        server.login(gmail_user, gmail_app_password)
-        server.sendmail(gmail_user, receiver, msg.as_string())
-        server.close()
+    # try:
+    #     server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+    #     server.ehlo()
+    #     server.login(gmail_user, gmail_app_password)
+    #     server.sendmail(gmail_user, receiver, msg.as_string())
+    #     server.close()
         
         print('Email sent!')
-    except Exception as exception:
-        inform_user_about_updates(receiver,"Error in Building Lamguage",e)
-        print("Error: %s!\n\n" % exception)
+    # except Exception as exception:
+    #     inform_user_about_updates(receiver,"Error in Building Lamguage",e)
+    #     print("Error: %s!\n\n" % exception)
