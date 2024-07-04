@@ -22,7 +22,7 @@ from googleapiclient.discovery import build
 sec_file = './credentials.json'
 
 @functions_framework.http
-def cors_enabled_function(request):
+def assessment_json_generation(request):
     gc = pygsheets.authorize(service_file=sec_file)
     request_json = request.get_json(silent=True)
     request_args = request.args
