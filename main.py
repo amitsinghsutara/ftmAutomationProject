@@ -95,7 +95,7 @@ def create_json_from_data(data,lang,feedback_text):
 
         if bucketID not in buckets:
             buckets[bucketID] = {
-                "bucketID": bucketID,
+                "bucketID": int(bucketID),
                 "bucketName": f"{bucket_name}-{bucketID}",
                 "usedItems": [],
                 "items": []
